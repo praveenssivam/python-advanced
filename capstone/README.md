@@ -109,11 +109,13 @@ capstone/
 │   └── validate_trips.py              ← Day 0: the script you start with
 └── validify/                          ← the project you build toward
     ├── pyproject.toml                 ← GIVEN: deps + tool config
+    ├── requirements.txt               ← GIVEN: runtime dependencies
+    ├── requirements-dev.txt           ← GIVEN: dev/test dependencies
     ├── .gitignore                     ← GIVEN
     ├── config/
     │   └── rules.yaml                 ← GIVEN: declarative rule definitions
     ├── data/
-    │   └── (copy taxi_trips_sample.csv here)
+    │   └── taxi_trips_sample.csv      ← GIVEN: 200-row dataset (clean + dirty rows)
     ├── src/
     │   └── validify/
     │       ├── core/
@@ -151,7 +153,7 @@ capstone/
 
 **Applies:** Module 1 (OOP) + Module 2 (Advanced Object Modeling, first half)
 
-**Goal:** Convert the three standalone validation *functions* in the starter script into
+**Goal:** Convert the seven hardcoded validation *functions* in the starter script into
 a *class hierarchy*.
 
 **Setup (do this once before starting tasks):**
@@ -174,23 +176,25 @@ pip install -r requirements.txt -r requirements-dev.txt
    (not a dataclass yet — that is Day 2):
    - Fields: `field: str`, `rule: str`, `passed: bool`, `message: str`
 
-3. **`src/validify/rules/built_in.py`** — implement two rules:
-   - `NullCheckRule(BaseValidator)` — mirrors `check_not_null()` from the starter script
-   - `RangeRule(BaseValidator)` — mirrors `check_range()`
-   - Each rule receives its config (`field`, `min_val`, `max_val`) in `__init__`
+3. **`src/validify/rules/built_in.py`** — implement three rules:
+   - `NullCheckRule(BaseValidator)` — mirrors `check_not_null()`
+   - `RangeRule(BaseValidator)` — mirrors `check_range()` (used for passenger_count, fare, distance)
+   - `CoordinateRule(BaseValidator)` — mirrors `check_coordinate()` (same logic, named specifically)
+   - Each rule stores `self.field` and any bounds/config in `__init__`
 
 4. **`src/validify/main.py`** — create a minimal runner:
    ```python
-   # load CSV, instantiate rules, run __call__ on each record, print summary
-   # same output as the starter script — new structure
+   # load CSV, instantiate 3-4 rules, run __call__ on each record, print summary
+   # does NOT need to fully match the starter script yet — coverage grows on Day 3
    ```
 
-**Checkpoint:** `python src/validify/main.py data/taxi_trips_sample.csv`
-produces the same summary as `python ../starter/validate_trips.py taxi_trips_sample.csv`.
+**Checkpoint:** `python src/validify/main.py data/taxi_trips_sample.csv` — runs without
+errors and prints a validation report. (Full rule parity with the starter script is
+achieved on Day 3 when rules load from `config/rules.yaml`.)
 
 **Part B — Stretch (15 min):**
-- Add `AllowedValuesRule(BaseValidator)` to mirror `check_allowed_values()`
-- Apply it to the `payment_type` field in `main.py`
+- Add `DateFormatRule(BaseValidator)` — mirrors `check_date_format()`
+- Apply it to `pickup_datetime` and `dropoff_datetime` in `main.py`
 
 ---
 
@@ -325,7 +329,7 @@ Run `main.py` — confirm that rule no longer triggers. Restore it.
 
    curl -X POST http://localhost:8000/validate \
      -F "file=@data/taxi_trips_sample.csv"
-   # → {"run_id": "abc-123", "summary": {"total": 200, "passed": 167, ...}}
+   # → {"run_id": "abc-123", "summary": {"total": 200, "passed": 100, ...}}
 
    curl http://localhost:8000/reports/abc-123
    ```
