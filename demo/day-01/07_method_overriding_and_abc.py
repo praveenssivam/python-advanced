@@ -20,6 +20,24 @@ import io
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PART 1: Method overriding with super()
+#
+# When a subclass defines a method with the same name as a parent method,
+# the subclass version REPLACES the parent for that class.
+# super().<method>()  calls the parent's version explicitly, letting you
+# EXTEND (add to) the parent behaviour rather than discard it.
+#
+# Python's method resolution searches the MRO (Method Resolution Order):
+#   TSVExporter.__mro__ = [TSVExporter, BaseExporter, object]
+#
+# Flow for  TSVExporter().export(data):
+#   1. export() → found on BaseExporter (not overridden in TSVExporter)
+#      Calls self._header() → found on BaseExporter (not overridden) → "--- BEGIN ---"
+#   2. Calls self._body(rows) → found on TSVExporter (OVERRIDDEN)  → tab-separated string
+#   3. Calls self._footer()   → found on TSVExporter (OVERRIDDEN)  → calls super()._footer()
+#      a. super()._footer() → BaseExporter._footer() → "--- END EXPORT ---"
+#      b. returns "--- END EXPORT ---  [TSV format]"
+# ══════════════════════════════════════════════════════════════════════════════
+# PART 1: Method overriding with super()
 # ══════════════════════════════════════════════════════════════════════════════
 
 class BaseExporter:
@@ -82,6 +100,29 @@ def demo_overriding():
     print(tsv.export(data))
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PART 2: Abstract Base Classes — enforcing a contract
+#
+# ABC marks a class as abstract — it CANNOT be instantiated directly.
+# @abstractmethod marks methods that EVERY concrete subclass MUST implement.
+# If a subclass forgets to implement an @abstractmethod, Python raises
+# TypeError at instantiation time (not at definition time).
+#
+# Flow for  Exporter():  (trying to instantiate the abstract base)
+#   1. Python checks: does Exporter have any unimplemented @abstractmethods?
+#   2. Yes: export() is @abstractmethod and not implemented on Exporter
+#   3. Raise TypeError: "Can't instantiate abstract class Exporter
+#      without an implementation for abstract method 'export'"
+#
+# Flow for  ParquetExporter():  (subclass that forgot export())
+#   1. ParquetExporter inherits @abstractmethod export() from Exporter
+#      and provides no implementation (only `pass`)
+#   2. Python raises TypeError on instantiation — same guard as above
+#
+# Flow for  CSVExporter().export(data):  (correct subclass)
+#   1. CSVExporter provides export() → no abstract methods remaining
+#   2. Instantiation succeeds
+#   3. export(data) → CSVExporter.export() → builds CSV string
 # ══════════════════════════════════════════════════════════════════════════════
 # PART 2: Abstract Base Classes — enforcing a contract
 # ══════════════════════════════════════════════════════════════════════════════

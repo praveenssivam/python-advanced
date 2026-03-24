@@ -10,6 +10,18 @@ Run:
 """
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PART 1: No encapsulation — open to invalid state
+#
+# When all attributes are public, any caller can assign any value
+# without any validation.  The object cannot enforce its own invariants.
+#
+# Flow for  s = SensorRaw("probe", 36.5); s.reading = -9999:
+#   1. SensorRaw.__init__ sets self.reading = 36.5  (no checks)
+#   2. s.reading = -9999  → Python sets the attribute directly
+#      No validation fires — the object silently holds an invalid value.
+# ══════════════════════════════════════════════════════════════════════════════
+
 # ── Part 1: Why expose raw attributes is risky ──────────────────────────────
 
 class SensorRaw:
@@ -33,6 +45,23 @@ def demo_unprotected():
     print(f"After bad assignment: {s.reading}")
     print("Object is now in an invalid state with no warning.")
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PART 2: _ prefix convention — internal by agreement
+#
+# A single leading underscore is a SIGNAL to other developers:
+# "this attribute is internal implementation detail — don't use it directly".
+# Python does NOT enforce this; callers can still access _reading directly.
+# It's a community convention, not a language barrier.
+#
+# Flow for  s.set_reading(38.5):
+#   1. validate 38.5 >= -273.15 → passes
+#   2. self._reading = 38.5  (internal storage updated)
+#
+# Flow for  s.set_reading(-300):
+#   1. validate -300 >= -273.15 → fails
+#   2. raise ValueError("Temperature below absolute zero...")
+# ══════════════════════════════════════════════════════════════════════════════
 
 # ── Part 2: Encapsulation with naming convention ─────────────────────────────
 
@@ -76,6 +105,30 @@ def demo_convention():
     print(f"Bypassed via s._reading = -300: {s._reading}")
     print("Convention works, but only by agreement — properties provide real control.")
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PART 3: @property — Pythonic validated attribute access
+#
+# @property makes a method LOOK like a plain attribute to callers.
+# The getter is called on read (sensor.reading).
+# The setter is called on write (sensor.reading = value).
+# Callers use natural attribute syntax; the class enforces invariants silently.
+#
+# Flow for  s = Sensor("probe", 22.0):
+#   1. __init__ sets self.reading = 22.0   (routes through the setter!)
+#   2. setter: isinstance(22.0, (int,float))? Yes
+#   3.         -273.15 <= 22.0 <= 1000.0?   Yes
+#   4.         self._reading = 22.0         (stores the validated float)
+#
+# Flow for  s.reading = -300:
+#   1. setter called with value=-300
+#   2. isinstance(-300, (int,float))? Yes
+#   3. -273.15 <= -300 <= 1000.0?    No  → raise ValueError
+#
+# Flow for  s.reading_fahrenheit  (computed property, no setter):
+#   1. getter called  → return self._reading * 9/5 + 32
+#   2. s.reading_fahrenheit = 100  → AttributeError (no setter defined)
+# ══════════════════════════════════════════════════════════════════════════════
 
 # ── Part 3: @property — Pythonic encapsulation ───────────────────────────────
 
