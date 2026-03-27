@@ -14,13 +14,23 @@ Run:
 
 # ══════════════════════════════════════════════════════════════════════════════
 # APPROACH 1: INHERITANCE
-# ══════════════════════════════════════════════════════════════════════════════
 #
 # ReportBase defines a template for generating reports.
-# Subclasses specialise the formatting step.
+# Subclasses specialise a PART (the _body) while inheriting the rest.
 #
-# Works well when the subclass truly IS a more specific kind of the base,
-# and when adding new formats means creating new subclasses.
+# When to use: the subclass truly IS a more specific version of the base,
+# and the shared structure (header + body + footer) is stable.
+#
+# Flow for  CSVReport("Q1", data).generate():
+#   1. generate() is inherited from ReportBase; calls self._header()
+#   2. self._header() → ReportBase._header()  (not overridden) → "--- BEGIN ..."
+#      Wait, ReportBase.generate() calls self._body():  → CSVReport._body()  (overridden!)
+#   2. CSVReport._body(rows) → builds CSV header + lines
+#   3. ReportBase._footer()  → "--- END ..."
+#   4. return joined string
+# ══════════════════════════════════════════════════════════════════════════════
+# APPROACH 1: INHERITANCE
+# ══════════════════════════════════════════════════════════════════════════════
 
 class ReportBase:
     def __init__(self, title: str, rows: list[dict]):
@@ -75,12 +85,24 @@ def demo_inheritance():
 
 # ══════════════════════════════════════════════════════════════════════════════
 # APPROACH 2: COMPOSITION
+#
+# ReportService OWNS a formatter object — it does NOT inherit from a base.
+# The formatter is injected at construction time (Dependency Injection).
+# Adding a new format requires only a new formatter class; ReportService
+# is never modified — it is closed for modification, open for extension.
+#
+# Flow for  ReportService(title, data, JSONFormatter()).generate():
+#   1. __init__ stores self._formatter = JSONFormatter() instance
+#   2. generate() calls self._formatter.format(self.title, self.rows)
+#   3. JSONFormatter.format() → returns json.dumps({...})
+#   4. ReportService knows nothing about JSON — it only calls .format()
+#
+# Flow for  service.switch_formatter(PlainTextFormatter()):
+#   1. self._formatter is replaced at runtime
+#   2. Next call to generate() uses PlainTextFormatter — no class changes
 # ══════════════════════════════════════════════════════════════════════════════
-#
-# ReportService OWNS a formatter object rather than inheriting from a base.
-# Formatters are independent objects injected at construction time (or later).
-#
-# Adding a new format: write a new formatter class — ReportService stays unchanged.
+# APPROACH 2: COMPOSITION
+# ══════════════════════════════════════════════════════════════════════════════
 
 class CSVFormatter:
     def format(self, title: str, rows: list[dict]) -> str:

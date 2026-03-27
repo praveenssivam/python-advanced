@@ -9,6 +9,25 @@ Run:
 """
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 1: Parameters and return values
+#
+# Python function parameters can have DEFAULT VALUES, making them optional.
+# Arguments can be passed POSITIONALLY or by KEYWORD name.
+# A function may have multiple return paths; always returns exactly one value
+# (or None if there is no return statement).
+#
+# Flow for  calculate_discount(200, 25):
+#   1. price=200, discount_pct=25
+#   2. Validate 0 <= 25 <= 100  → passes
+#   3. reduction = 200 * (25/100) = 50.0
+#   4. return 200 - 50.0 = 150.0
+#
+# Flow for  calculate_discount(200):
+#   1. price=200, discount_pct=10  (default applied)
+#   2–4 same as above → return 180.0
+# ══════════════════════════════════════════════════════════════════════════════
+
 # ── Parameters and return values ────────────────────────────────────────────
 
 def calculate_discount(price, discount_pct=10):
@@ -32,7 +51,26 @@ def demo_parameters():
     print(calculate_discount(200, discount_pct=50))  # keyword argument
 
 
-# ── Local scope ─────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 2: Local scope and closures
+#
+# Each function call creates its own LOCAL SCOPE — a namespace for names
+# defined inside that call.  Names in the local scope shadow outer names.
+# A CLOSURE is a function that captures names from its enclosing scope;
+# it can READ the enclosing name but cannot REBIND it (without `nonlocal`).
+#
+# Flow for  rate = 0.05; def apply_rate(amount): return amount * (1+rate):
+#   1. rate = 0.05 exists in demo_scope's local scope
+#   2. apply_rate captures 'rate' from the enclosing scope (closure)
+#   3. apply_rate(1000) → amount=1000; reads rate=0.05 → returns 1050.0
+#
+# Flow for  outer = "original"; def modify(): outer = "local copy":
+#   1. outer = "original" exists in demo_scope's scope
+#   2. Inside modify(), 'outer = ...' creates a NEW local, shadowing the outer one
+#      It does NOT modify the outer binding — outer stays "original"
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Local scope ───────────────────────────────────────────────────────────────────────────
 
 def demo_scope():
     print("\n" + "=" * 50)
@@ -60,7 +98,30 @@ def demo_scope():
     print("Reassignment inside modify() created a new local — outer is unchanged.")
 
 
-# ── Exception handling ───────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 3: try / except / else / finally
+#
+# try         → code that might raise an exception
+# except E as e→ runs ONLY if an exception of type E (or subtype) is raised
+# else         → runs ONLY if NO exception was raised in try
+# finally      → ALWAYS runs: cleanup — close files, release locks, etc.
+#
+# Flow for  parse_sensor_reading("23.7"):
+#   1. try: float("23.7") → 23.7   (no exception)
+#   2.      23.7 < 0? No → return 23.7
+#   3. except: SKIPPED
+#   4. else:   runs → prints "Valid reading: 23.7"
+#   5. finally: ALWAYS runs → prints "Finished processing '23.7'"
+#
+# Flow for  parse_sensor_reading("-5.1"):
+#   1. try: float("-5.1") → -5.1
+#   2.      -5.1 < 0 → raise ValueError("Sensor reading cannot be negative")
+#   3. except ValueError: runs → prints "Invalid reading — ..."
+#   4. else: SKIPPED
+#   5. finally: ALWAYS runs → prints "Finished processing '-5.1'"
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Exception handling ────────────────────────────────────────────────────────────────────
 
 def parse_sensor_reading(raw_value):
     """Convert a string sensor reading to float. Raises ValueError on bad input."""
@@ -92,7 +153,24 @@ def demo_exceptions():
             print(f"  [finally] Finished processing {raw!r}")
 
 
-# ── Raising and re-raising ───────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 4: Raising exceptions with descriptive messages
+#
+# Use  raise ExceptionType("message")  to signal an error explicitly.
+# Choose the most specific built-in type that fits the situation:
+#   ValueError   → right type, wrong value / range / format
+#   TypeError    → wrong type entirely
+#   KeyError     → required dict key is missing
+#   RuntimeError → logic failure with no better fit
+#
+# Flow for  load_pipeline_config({"source": "s3://..."})  (incomplete config):
+#   1. required_keys = ["source", "destination", "format"]
+#   2. missing = ["destination", "format"]  (not in config)
+#   3. missing is truthy → raise KeyError("Missing required config keys: [...]")
+#   4. Caller catches KeyError and prints the error message
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Raising and re-raising ─────────────────────────────────────────────────────────
 
 def load_pipeline_config(config: dict):
     """Extract required keys from a configuration dictionary."""

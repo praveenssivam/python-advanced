@@ -17,6 +17,23 @@ Run:
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ANTI-PATTERN 1: God Object
+#
+# A God Object is a class that holds too many responsibilities.
+# Symptoms: enormous __init__, methods from 5 different domains,
+# every change in the system touches this one class.
+# Result: impossible to test in isolation, fragile when any part changes.
+#
+# Cure: identify each distinct responsibility and extract it into its own
+# focused class.  The orchestrator becomes thin and delegates everything.
+#
+# Flow for DataPipeline.run("data/sales.csv"):
+#   1. self._reader.read(source)        → CSVReader.read()       → list of raw dicts
+#   2. self._validator.validate(raw)    → RowValidator.validate() → (clean, errors)
+#   3. self._transformer.transform(clean) → MarkupTransformer.transform() → enriched list
+#   4. return {"processed": result, "errors": errors}
+#   Each step is testable independently; DataPipeline is unchanged when any step changes.
+# ══════════════════════════════════════════════════════════════════════════════
+# ANTI-PATTERN 1: God Object
 # A single class accumulates too many responsibilities.
 # Signs: huge __init__, methods from 5 different domains, hard to test.
 # ══════════════════════════════════════════════════════════════════════════════
@@ -127,6 +144,26 @@ def demo_god_object():
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ANTI-PATTERN 2: Tight Coupling
+#
+# Tight coupling happens when one class reaches DIRECTLY into another class's
+# internals — reading or writing private attributes, or making assumptions
+# about implementation details that could change.
+#
+# Cure: communicate via a PUBLIC METHOD INTERFACE instead.
+# The caller asks the other object for the behaviour it needs; it doesn’t
+# manipulate the data directly.
+#
+# Flow for  InvoiceTight.generate(bad_order)  (BAD):
+#   1. invoice directly sets  bad_order.discount = 5  → MUTATES caller's data!
+#   2. Reads bad_order.items directly  → relies on internal structure
+#   3. Side-effect: subsequent calls see a permanently mutated Order
+#
+# Flow for  Invoice.generate(good_order)  (GOOD):
+#   1. invoice calls  good_order.total()  → asks Order to compute its own total
+#   2. Order.total() reads self._items and self._discount internally
+#   3. Invoice never touches Order's internals — no mutation, no coupling
+# ══════════════════════════════════════════════════════════════════════════════
+# ANTI-PATTERN 2: Tight Coupling
 # One class directly accesses or modifies another class's internals.
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -184,6 +221,28 @@ def demo_tight_coupling():
     print("      Invoice reads total via a method — Order owns its own state.")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# ANTI-PATTERN 3: Inheritance Misuse
+#
+# Inheritance models an IS-A relationship: a Dog IS-A Animal.
+# Misuse: inheriting from a class ONLY to reuse one of its methods,
+# even when the IS-A relationship makes no semantic sense.
+# This creates misleading type hierarchies and causes `isinstance()` to lie.
+#
+# Cure: prefer COMPOSITION over inheritance for code reuse.
+# "Has-a" / "Uses-a" relationships should be expressed through a contained
+# object, not by extending a base class.
+#
+# Flow for  UserReport.generate(users)  (BAD):
+#   1. UserReport inherits from CSVWriterBase
+#   2. Calling isinstance(report, CSVWriterBase) → True  (misleading!)
+#   3. CSVWriterBase.write_csv() is reused, but UserReport IS NOT a CSVWriterBase
+#
+# Flow for  UserReportGood.generate(users)  (GOOD):
+#   1. UserReportGood stores a writer callable: self._write
+#   2. generate() calls self._write(users, "users.csv")
+#   3. The writer can be swapped without changing UserReportGood
+#   4. isinstance(report, CSVWriterBase) → False (correctly, there's no IS-A)
 # ══════════════════════════════════════════════════════════════════════════════
 # ANTI-PATTERN 3: Inheritance Misuse
 # Inheriting from a class just to reuse a method, even when the IS-A
