@@ -109,15 +109,24 @@ def demo_as_completed():
 # ══════════════════════════════════════════════════════════════════════════════
 # PART 3: Shared state — race condition without a lock
 #
-# Two threads both increment a global counter.  The operation count += 1
-# is NOT atomic — it's three steps: LOAD, ADD, STORE.
-# Threads can interleave these steps, losing increments.
+# Two threads both increment a shared counter.
+# The operation looks like one step but is really LOAD → ADD → STORE.
+# If the GIL switches between LOAD and STORE, both threads write back
+# the same incremented value — one increment is lost.
 #
 # Flow (without lock):
-#   thread-A: LOAD count=1000
-#   thread-B: LOAD count=1000   ← B reads BEFORE A has stored
-#   thread-A: STORE count=1001
-#   thread-B: STORE count=1001  ← B overwrites A's increment → one increment LOST
+#   thread-A: current = self.value   ← LOAD  (reads 1000)
+#             --- GIL yields here, thread-B runs ---
+#   thread-B: current = self.value   ← LOAD  (also reads 1000!)
+#   thread-B: self.value = current+1 ← STORE (writes 1001)
+#             --- GIL yields back to thread-A ---
+#   thread-A: self.value = current+1 ← STORE (writes 1001 again — lost B's write!)
+#
+# Why self.value += 1 alone doesn't show the race on CPython 3.12:
+#   The specialising interpreter fuses LOAD_ATTR + BINARY_OP + STORE_ATTR
+#   into a fast path that executes in < 1 µs — faster than any GIL switch
+#   interval.  Making the two steps explicit Python statements with a forced
+#   yield between them guarantees the race fires on every iteration.
 # ══════════════════════════════════════════════════════════════════════════════
 
 class UnsafeCounter:
@@ -125,9 +134,11 @@ class UnsafeCounter:
     def __init__(self):
         self.value = 0
 
-    def increment(self, n: int = 100_000) -> None:
+    def increment(self, n: int = 1_000) -> None:
         for _ in range(n):
-            self.value += 1        # NOT atomic: LOAD → ADD → STORE
+            current = self.value       # STEP 1 — LOAD: read shared state into local
+            time.sleep(0.000_001)      # forced 1 µs yield: GIL hands off to other thread
+            self.value = current + 1   # STEP 2 — STORE: write back a now-stale value
 
 
 class SafeCounter:
@@ -136,7 +147,7 @@ class SafeCounter:
         self.value = 0
         self._lock = threading.Lock()
 
-    def increment(self, n: int = 100_000) -> None:
+    def increment(self, n: int = 1_000) -> None:
         for _ in range(n):
             with self._lock:       # only one thread enters at a time
                 self.value += 1
@@ -148,7 +159,7 @@ def demo_race_condition():
     print("=" * 60)
     print()
 
-    increments_per_thread = 1000_000
+    increments_per_thread = 1_000
     n_threads = 2
     expected = increments_per_thread * n_threads
 
