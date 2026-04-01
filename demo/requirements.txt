@@ -1,3 +1,12 @@
-# No third-party dependencies.
-# All demos use the Python standard library only.
-# This file exists for tooling compatibility and future additions.
+# Most demos use the Python standard library only.
+# Module 6 file 12 (FastAPI demo) requires:
+fastapi>=0.115
+uvicorn>=0.30
+
+# Module 8 testing demos require:
+pytest
+pytest-mock
+pytest-asyncio
+pytest-cov
+hypothesis
+freezegun

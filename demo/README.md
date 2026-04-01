@@ -14,12 +14,12 @@ Working professionals from data engineering backgrounds who are:
 
 ---
 
-## Topics by Day
+## Topics by Module
 
-| Day | Module | Topics |
-|-----|--------|--------|
-| Day 1 | Foundations + OOP | References, mutability, functions, exceptions, modules, class vs instance, encapsulation, properties, inheritance, composition, ABCs, OOP anti-patterns |
-| Day 2 | Advanced Object Modeling | `__repr__`, `__eq__`, dataclasses, properties, context managers, decorators, plugin registration |
+| Module | Title | Topics |
+|--------|-------|--------|
+| Module 1 | Foundations + OOP | References, mutability, functions, exceptions, modules, class vs instance, encapsulation, properties, inheritance, composition, ABCs, OOP anti-patterns |
+| Module 2 | Advanced Object Modeling | `__repr__`, `__eq__`, dataclasses, properties, context managers, decorators, plugin registration |
 
 ---
 
@@ -71,15 +71,15 @@ pip install -r requirements.txt
 From the repository root, with `.venv` activated:
 
 ```bash
-# Day 1
-python day-01/01_references_and_mutability.py
-python day-01/02_functions_and_exceptions.py
-python day-01/03_modules_demo/main.py
-python day-01/04_class_vs_instance.py
-python day-01/05_encapsulation_and_properties.py
-python day-01/06_inheritance_vs_composition.py
-python day-01/07_method_overriding_and_abc.py
-python day-01/08_oop_antipatterns.py
+# Module 1
+python module-01/01_references_and_mutability.py
+python module-01/02_functions_and_exceptions.py
+python module-01/03_modules_demo/main.py
+python module-01/04_class_vs_instance.py
+python module-01/05_encapsulation_and_properties.py
+python module-01/06_inheritance_vs_composition.py
+python module-01/07_method_overriding_and_abc.py
+python module-01/08_oop_antipatterns.py
 ```
 
 ---
@@ -91,7 +91,7 @@ demo/
 ├── README.md
 ├── .gitignore
 ├── requirements.txt
-├── day-01/
+├── module-01/
 │   ├── README.md
 │   ├── 01_references_and_mutability.py
 │   ├── 02_functions_and_exceptions.py
@@ -103,18 +103,18 @@ demo/
 │   ├── 06_inheritance_vs_composition.py
 │   ├── 07_method_overriding_and_abc.py
 │   └── 08_oop_antipatterns.py
-└── day-02/
-    └── (Day 2 demos — coming soon)
+└── module-02/
+    └── (Module 2 demos — coming soon)
 ```
 
 ---
 
 ## Trainer Notes
 
-- Run demos sequentially within each day — concepts build progressively.
+- Run demos sequentially within each module — concepts build progressively.
 - Each file is self-contained and prints its own output.
 - You can live-edit and re-run any file to show variations.
-- For `03_modules_demo`, always run from the repository root using `python day-01/03_modules_demo/main.py`.
+- For `03_modules_demo`, always run from the repository root using `python module-01/03_modules_demo/main.py`.
 - The anti-patterns file (`08_oop_antipatterns.py`) shows bad code and its fix side-by-side — emphasise the contrast.
 
 ---
@@ -122,7 +122,7 @@ demo/
 ## Troubleshooting
 
 **`ModuleNotFoundError` on 03_modules_demo:**
-Run from the repository root, not from inside the `day-01/03_modules_demo/` directory.
+Run from the repository root, not from inside the `module-01/03_modules_demo/` directory.
 
 **Wrong Python version:**
 Check with `python --version`. Demos require Python 3.10+.
