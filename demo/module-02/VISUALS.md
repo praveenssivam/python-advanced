@@ -1,4 +1,4 @@
-# Day 2 — Visual Reference: Advanced Object Modelling
+# Module 2 — Visual Reference: Advanced Object Modelling
 
 ---
 
@@ -484,7 +484,7 @@ flowchart TD
 
 ## 09 — Combined Modeling Demo
 
-### How all Day 2 techniques compose
+### How all Module 2 techniques compose
 
 ```mermaid
 flowchart TD

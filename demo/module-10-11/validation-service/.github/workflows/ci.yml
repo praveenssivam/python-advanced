@@ -1,0 +1,88 @@
+# CI pipeline for validation-service
+# Runs on every push and pull_request targeting the main branch.
+# Pipeline stages in order: Lint → Test → Build Docker image
+
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  ci:
+    name: "Lint → Test → Build"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository source code onto the runner.
+      # actions/checkout@v4 is the official GitHub action for fetching code.
+      # This must be the very first step — every subsequent step depends on
+      # the project files being present on the runner's file system.
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      # Step 2: Install Python 3.11 on the runner.
+      # actions/setup-python@v5 installs the specified Python version and
+      # adds it to PATH. Must come before the pip install step — you cannot
+      # install packages before the runtime exists.
+      - name: "Set up Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Step 3: Cache pip's download cache between workflow runs.
+      # actions/cache@v4 saves ~/.cache/pip to GitHub's cache storage after
+      # a successful run and restores it on the next run before pip executes.
+      #
+      # Cache key: OS name + a hash of requirements.txt.
+      # A cache HIT means pip finds all wheel files already downloaded and
+      # skips all network requests — reducing install time from ~30 s to ~3 s.
+      #
+      # restore-keys is a fallback: if the exact hash doesn't match (e.g. after
+      # adding a new package), reuse the most recent cache for the same OS
+      # rather than starting from zero. Partial reuse is still much faster
+      # than a cold install.
+      - name: "Cache pip dependencies"
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # Step 4: Install all project dependencies from requirements.txt.
+      # Runs after cache restore so pip can use cached wheel files.
+      # Installs fastapi, uvicorn, pytest, httpx, and ruff in one command.
+      - name: "Install dependencies"
+        run: pip install -r requirements.txt
+
+      # Step 5: Run the ruff linter.
+      # Linting runs BEFORE tests to give the fastest possible feedback on
+      # style issues and broken imports — without waiting for the full test
+      # suite to execute. A lint failure is cheaper to diagnose early.
+      # ruff is included in requirements.txt so no separate install is needed.
+      - name: "Lint"
+        run: ruff check .
+
+      # Step 6: Run the test suite with pytest.
+      # Placed after lint so style issues are surfaced first.
+      # --tb=short  truncated tracebacks — enough context to find the failure
+      #             without flooding the log with full stack traces.
+      # -q          quiet output — one dot per passing test, summary at end.
+      - name: "Test"
+        run: pytest tests/ --tb=short -q
+
+      # Step 7: Build the Docker image.
+      # Placed last — only executes after lint AND tests succeed. We never
+      # want to build and potentially push an image built from broken code.
+      #
+      # Image tag uses github.sha (the full 40-character commit SHA).
+      # Every commit produces a uniquely tagged image, making it trivial to
+      # trace which image was built from which commit when investigating a
+      # production incident. Using "latest" alone would make this impossible.
+      - name: "Build Docker image"
+        run: |
+          docker build -t validation-service:${{ github.sha }} .
+          echo "Image built: validation-service:${{ github.sha }}"

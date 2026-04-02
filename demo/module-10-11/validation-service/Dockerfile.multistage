@@ -1,0 +1,87 @@
+# =============================================================================
+# Multi-Stage Build — Module 10 Step 2
+# =============================================================================
+# Build:   docker build -f Dockerfile.multistage -t validation-service:lean .
+# Run:     docker run -p 8000:8000 validation-service:lean
+# Compare: docker image ls validation-service
+#
+# Expected size difference:
+#   validation-service:simple  ~900 MB  (full Python + build tools)
+#   validation-service:lean    ~180 MB  (slim Python + app code only)
+# =============================================================================
+
+# =============================================================================
+# STAGE 1 — builder: installs dependencies, discarded from final image
+# =============================================================================
+#
+# The builder stage uses the full Python image so pip can compile C extensions
+# (some packages include native code). All build machinery — gcc, pip, headers —
+# lives only in this stage. Nothing from "builder" reaches the final image
+# except the installed package files we explicitly copy in Stage 2.
+FROM python:3.11 AS builder
+
+# Separate working directory for the build stage.
+# Keeping it distinct from /app (used in Stage 2) makes intent clear.
+WORKDIR /build
+
+# Copy only requirements.txt — layer caching still applies here.
+# If requirements.txt hasn't changed, Docker reuses the cached pip install
+# layer and Stage 1 completes in seconds.
+COPY requirements.txt .
+
+# Install packages under /build/install rather than the system Python paths.
+# --prefix=/install writes all packages into /build/install/lib/python3.11/...
+# creating a self-contained, relocatable directory tree. In Stage 2 we copy
+# this entire tree to /usr/local where the runtime Python can find it.
+# Without --prefix, packages land in the system site-packages and would be
+# harder to copy selectively.
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# =============================================================================
+# STAGE 2 — runtime: lean production image, only packages + app code
+# =============================================================================
+#
+# python:3.11-slim contains only the Python runtime and a minimal Debian base —
+# no gcc, no pip, no build tools. This is what makes the final image small.
+# Build tools are not needed at runtime; keeping them would only increase
+# the image size and the potential attack surface.
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+# Copy the installed packages from Stage 1.
+# --from=builder references Stage 1 by its alias defined in AS builder.
+# /build/install mirrors the standard Python install layout, so copying it
+# to /usr/local makes all packages immediately importable by the runtime Python.
+# The builder stage itself (and its ~700 MB of build tools) is discarded here.
+COPY --from=builder /build/install /usr/local
+
+# Copy the application source code from the build context (your local machine).
+# Files excluded by .dockerignore (tests/, .git/, *.md, etc.) are not sent
+# to the Docker daemon and therefore cannot appear in the image.
+COPY . .
+
+# Create and switch to a non-root user.
+# Containers run as root by default. If an attacker exploits a vulnerability
+# in the application, running as a non-root user limits the blast radius:
+# they cannot write to system directories, install packages, or interact with
+# other root-owned resources on the host (when combined with proper namespacing).
+#
+# --disabled-password  no password set (interactive login is not needed)
+# --no-create-home     saves a few bytes; the app's working directory is /app
+RUN adduser --disabled-password --no-create-home appuser
+USER appuser
+
+# Declare the port. Same as Dockerfile — must match --port in CMD.
+EXPOSE 8000
+
+# Identical HEALTHCHECK to Dockerfile.
+# Keeping it the same across both variants means Docker Compose, Kubernetes
+# liveness probes, and monitoring tools behave identically regardless of
+# which image is deployed.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+# Same uvicorn startup command as Dockerfile.
+# Exec form ensures SIGTERM reaches uvicorn directly for graceful shutdown.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,27 @@
+# Version control — not needed in the image, keeps image lean
+.git/
+.github/
+
+# Python cache — rebuilt inside the container at import time
+__pycache__/
+*.pyc
+*.pyo
+
+# Test artifacts — the production image does not run tests
+.pytest_cache/
+
+# Environment and secrets — never bake credentials into an image
+.env
+.venv/
+venv/
+
+# Test source — not needed in a production image
+tests/
+
+# Documentation — reduces image size, not needed at runtime
+*.md
+README*
+
+# Docker build files — self-referential, not needed inside the image
+.dockerignore
+Dockerfile*

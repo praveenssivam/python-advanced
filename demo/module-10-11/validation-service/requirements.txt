@@ -1,0 +1,10 @@
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Testing
+pytest==8.3.3
+httpx==0.28.0
+
+# Linting (also used in CI)
+ruff==0.7.4
